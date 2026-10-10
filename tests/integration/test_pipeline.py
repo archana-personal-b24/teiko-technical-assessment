@@ -17,7 +17,10 @@ def test_full_pipeline_business_answers(pipeline_db):
     with sqlite3.connect(pipeline_db) as connection:
         baseline=scalar(connection,"SELECT COUNT(*) FROM subjects s JOIN samples x USING(subject_id) WHERE condition='melanoma' AND treatment='miraclib' AND sample_type='PBMC' AND time_from_treatment_start=0")
         mean=scalar(connection,"SELECT AVG(c.count) FROM subjects s JOIN samples x USING(subject_id) JOIN cell_counts c USING(sample_id) WHERE condition='melanoma' AND sex='M' AND response='yes' AND time_from_treatment_start=0 AND population='b_cell'")
-        significant=connection.execute("SELECT population FROM analysis_results WHERE significant=1").fetchall()
+        significant=connection.execute(
+            "SELECT population FROM analysis_results "
+            "WHERE analysis_name='all_timepoints' AND significant=1"
+        ).fetchall()
     assert baseline==656
     assert round(mean,2)==10206.15
     assert significant==[("cd4_t_cell",)]

@@ -5,4 +5,18 @@ CREATE TABLE cell_counts (sample_id TEXT NOT NULL REFERENCES samples(sample_id) 
 CREATE INDEX idx_subject_cohort ON subjects(condition,treatment,response,sex);
 CREATE INDEX idx_sample_subset ON samples(sample_type,time_from_treatment_start);
 CREATE VIEW sample_frequencies AS WITH totals AS (SELECT sample_id,SUM(count) total_count FROM cell_counts GROUP BY sample_id) SELECT c.sample_id sample,t.total_count,c.population,c.count,100.0*c.count/NULLIF(t.total_count,0) percentage FROM cell_counts c JOIN totals t USING(sample_id);
-CREATE TABLE analysis_results (population TEXT PRIMARY KEY,n_responders INTEGER NOT NULL,n_nonresponders INTEGER NOT NULL,mean_responder REAL NOT NULL,mean_nonresponder REAL NOT NULL,mean_difference REAL NOT NULL,t_statistic REAL NOT NULL,p_value REAL NOT NULL,adjusted_p_value REAL NOT NULL,cohens_d REAL NOT NULL,significant INTEGER NOT NULL CHECK(significant IN (0,1)));
+CREATE TABLE analysis_results (
+    analysis_name TEXT NOT NULL,
+    population TEXT NOT NULL,
+    n_responders INTEGER NOT NULL,
+    n_nonresponders INTEGER NOT NULL,
+    mean_responder REAL NOT NULL,
+    mean_nonresponder REAL NOT NULL,
+    mean_difference REAL NOT NULL,
+    t_statistic REAL NOT NULL,
+    p_value REAL NOT NULL,
+    adjusted_p_value REAL NOT NULL,
+    cohens_d REAL NOT NULL,
+    significant INTEGER NOT NULL CHECK (significant IN (0, 1)),
+    PRIMARY KEY (analysis_name, population)
+);
