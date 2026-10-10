@@ -4,4 +4,7 @@ __pycache__/
 cell_counts.db
 cell_counts.db.tmp
 .pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 notes.txt
