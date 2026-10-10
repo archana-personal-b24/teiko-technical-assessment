@@ -1,7 +1,7 @@
 .PHONY: setup pipeline dashboard test test-unit test-integration check
 
 setup:
-	python -m pip install -r requirements.txt
+	python -m pip install -r requirements-dev.txt
 
 pipeline:
 	python load_data.py
@@ -11,7 +11,7 @@ dashboard:
 	python app.py
 
 test:
-	python -m pytest -q
+	python -m pytest
 
 test-unit:
 	python -m pytest -q tests/unit
@@ -19,4 +19,17 @@ test-unit:
 test-integration:
 	python -m pytest -q tests/integration
 
-check: pipeline test
+format:
+	python -m ruff format .
+
+lint:
+	python -m ruff check .
+	python -m ruff format --check .
+
+typecheck:
+	python -m mypy teiko load_data.py analyze.py app.py
+
+audit:
+	python -m pip_audit -r requirements.txt
+
+check: lint typecheck pipeline test audit

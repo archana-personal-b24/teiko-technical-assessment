@@ -16,19 +16,19 @@ def test_benjamini_hochberg_rejects_invalid_values():
 
 
 def test_cohens_d_known_effect():
-    effect = ResponseStatistics.cohens_d(
-        np.array([2.0, 3.0, 4.0]), np.array([1.0, 2.0, 3.0])
-    )
+    effect = ResponseStatistics.cohens_d(np.array([2.0, 3.0, 4.0]), np.array([1.0, 2.0, 3.0]))
     assert effect == pytest.approx(1.0)
 
 
 def test_analysis_averages_repeated_samples_by_subject():
-    observations = pd.DataFrame({
-        "subject_id": ["r1","r1","r2","r2","n1","n1","n2","n2"],
-        "response": ["yes"]*4+["no"]*4,
-        "population": ["b_cell"]*8,
-        "percentage": [20,40,30,34,10,12,18,22],
-    })
+    observations = pd.DataFrame(
+        {
+            "subject_id": ["r1", "r1", "r2", "r2", "n1", "n1", "n2", "n2"],
+            "response": ["yes"] * 4 + ["no"] * 4,
+            "population": ["b_cell"] * 8,
+            "percentage": [20, 40, 30, 34, 10, 12, 18, 22],
+        }
+    )
     result = ResponseStatistics().calculate(observations, "test").iloc[0]
     assert result.n_responders == 2
     assert result.n_nonresponders == 2

@@ -73,19 +73,10 @@ class DashboardFactory:
             .rename("subjects")
             .reset_index()
         )
-        sexes = (
-            baseline[["subject_id", "sex"]]
-            .drop_duplicates()
-            .groupby("sex")
-            .size()
-            .rename("subjects")
-            .reset_index()
-        )
+        sexes = baseline[["subject_id", "sex"]].drop_duplicates().groupby("sex").size().rename("subjects").reset_index()
 
         app = Dash(__name__, title="Immune Cell Response Explorer")
-        app.server.add_url_rule(
-            "/healthz", "healthz", lambda: ({"status": "ok"}, 200)
-        )
+        app.server.add_url_rule("/healthz", "healthz", lambda: ({"status": "ok"}, 200))
         app.layout = html.Div(
             [
                 html.H1("Immune Cell Response Explorer"),
@@ -123,9 +114,7 @@ class DashboardFactory:
                     "Melanoma, miraclib, PBMC only. Boxplots show samples; "
                     "inference averages repeated observations within subject."
                 ),
-                dcc.Dropdown(
-                    list(POPULATIONS), list(POPULATIONS), multi=True, id="plot-populations"
-                ),
+                dcc.Dropdown(list(POPULATIONS), list(POPULATIONS), multi=True, id="plot-populations"),
                 dcc.Graph(id="response-boxplot"),
                 html.H3("Primary analysis: all timepoints"),
                 self.table(primary_statistics.round(5)),
@@ -139,7 +128,16 @@ class DashboardFactory:
                 html.Div(
                     [
                         dcc.Graph(figure=px.bar(projects, x="project", y="samples", title="Samples by project")),
-                        dcc.Graph(figure=px.bar(responses, x="response", y="subjects", title="Subjects by response", color="response", color_discrete_map=self.COLORS)),
+                        dcc.Graph(
+                            figure=px.bar(
+                                responses,
+                                x="response",
+                                y="subjects",
+                                title="Subjects by response",
+                                color="response",
+                                color_discrete_map=self.COLORS,
+                            )
+                        ),
                         dcc.Graph(figure=px.bar(sexes, x="sex", y="subjects", title="Subjects by sex")),
                     ],
                     style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit,minmax(280px,1fr))"},

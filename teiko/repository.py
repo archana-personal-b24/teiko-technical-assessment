@@ -89,9 +89,7 @@ class AnalysisRepository:
         return float(frame.iloc[0, 0])
 
     @staticmethod
-    def _frequency_filters(
-        sample_search: str | None, population: str | None
-    ) -> tuple[str, list[object]]:
+    def _frequency_filters(sample_search: str | None, population: str | None) -> tuple[str, list[object]]:
         clauses: list[str] = []
         parameters: list[object] = []
         if sample_search:
