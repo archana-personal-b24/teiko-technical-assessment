@@ -21,3 +21,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t teiko-cell-analysis .
+      - name: Smoke-test production container
+        run: |
+          docker run --detach --name teiko-dashboard --publish 8050:8050 teiko-cell-analysis
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8050/healthz; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs teiko-dashboard
+          exit 1
