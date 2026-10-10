@@ -59,7 +59,10 @@ class CellCountLoader:
         csv_path = Path(csv_path)
         if not csv_path.is_file():
             raise FileNotFoundError(f"Input file not found: {csv_path}")
-        subjects, samples, counts, seen = {}, [], [], set()
+        subjects: dict[str, tuple[object, ...]] = {}
+        samples: list[tuple[object, ...]] = []
+        counts: list[tuple[object, ...]] = []
+        seen: set[str] = set()
         with csv_path.open(newline="", encoding="utf-8-sig") as handle:
             reader = csv.DictReader(handle)
             missing = REQUIRED_COLUMNS - set(reader.fieldnames or [])

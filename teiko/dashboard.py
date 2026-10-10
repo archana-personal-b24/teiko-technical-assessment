@@ -27,8 +27,8 @@ class DashboardFactory:
         self.settings = settings
 
     @staticmethod
-    def table(frame: pd.DataFrame, page_size: int = 10) -> dash_table.DataTable:
-        return dash_table.DataTable(
+    def table(frame: pd.DataFrame, page_size: int = 10):
+        return dash_table.DataTable(  # type: ignore[attr-defined]
             data=frame.to_dict("records"),
             columns=[{"name": column, "id": column} for column in frame.columns],
             page_size=page_size,
@@ -39,8 +39,8 @@ class DashboardFactory:
         )
 
     @staticmethod
-    def frequency_table() -> dash_table.DataTable:
-        return dash_table.DataTable(
+    def frequency_table():
+        return dash_table.DataTable(  # type: ignore[attr-defined]
             id="frequency-table",
             columns=[{"name": column, "id": column} for column in FREQUENCY_COLUMNS],
             page_current=0,
@@ -148,7 +148,7 @@ class DashboardFactory:
                     [
                         dcc.Input(id="sample-search", placeholder="Filter sample ID", debounce=True),
                         dcc.Dropdown(
-                            options=[{"label": "All populations", "value": ""}]
+                            options=[{"label": "All populations", "value": ""}]  # type: ignore[arg-type]
                             + [{"label": item, "value": item} for item in POPULATIONS],
                             value="",
                             clearable=False,
