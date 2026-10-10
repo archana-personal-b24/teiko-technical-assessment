@@ -9,8 +9,8 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -19,10 +19,12 @@ jobs:
   container:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: docker build -t teiko-cell-analysis .
       - name: Smoke-test production container
         run: |
+          test "$(docker run --rm --entrypoint id teiko-cell-analysis -u)" = "10001"
+          docker run --rm --entrypoint sh teiko-cell-analysis -c 'test ! -e /app/cell-count.csv'
           docker run --detach --name teiko-dashboard --publish 8050:8050 teiko-cell-analysis
           for attempt in {1..30}; do
             if curl --fail --silent http://127.0.0.1:8050/healthz; then
