@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+cell_counts.db
+cell_counts.db.tmp
+.pytest_cache/
+notes.txt

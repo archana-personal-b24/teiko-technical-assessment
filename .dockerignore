@@ -1,0 +1,8 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+cell_counts.db
+cell_counts.db.tmp
+.pytest_cache

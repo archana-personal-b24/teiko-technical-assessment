@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: teiko-cell-analysis
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    autoDeploy: true
