@@ -1,21 +1,10 @@
-# Loblaw Bio immune-cell analysis
+# Immune Cell Response Explorer
 
-This repository turns `cell-count.csv` into a normalized SQLite database, computes immune-cell relative frequencies and responder statistics, and presents Parts 2–4 in an interactive dashboard.
+A reproducible clinical immune-cell analysis pipeline and interactive dashboard. The project loads 10,500 samples into a normalized SQLite database, calculates per-sample population frequencies, compares miraclib responders with non-responders, and reports the requested baseline subsets.
 
-## Engineering architecture
+## Reviewer quick start
 
-The required root scripts are intentionally thin entry points. Application code lives in the `teiko` package with one responsibility per component:
-
-- `Settings`: immutable, environment-aware configuration.
-- `Database`: SQLite connection and schema lifecycle.
-- `CellCountLoader`: validation, normalization, transactional loading, and atomic replacement.
-- `ResponseAnalyzer`: pure statistical calculations plus an explicit persistence boundary.
-- `AnalysisRepository`: parameterized, read-only dashboard queries.
-- `DashboardFactory`: an application factory that produces the Dash/Flask WSGI application.
-
-This separation makes the numerical code testable without a database and makes ingestion and the UI testable with isolated temporary databases. Environment variables `CELL_COUNT_CSV`, `CELL_COUNT_DB`, `ANALYSIS_ALPHA`, and `PORT` support deployment without source changes.
-
-## Run in GitHub Codespaces
+Open the repository in GitHub Codespaces, then run:
 
 ```bash
 make setup
@@ -23,63 +12,129 @@ make pipeline
 make dashboard
 ```
 
-Open port **8050** from the Codespaces **Ports** tab. The local dashboard URL is `http://localhost:8050`; after forwarding the port, Codespaces supplies its own public preview link.
+Open forwarded port **8050** from the Codespaces **Ports** tab. No arguments, credentials, or external database are required.
 
-To validate the pipeline:
+| Resource | Link |
+|---|---|
+| Interactive dashboard | Deployment pending final publication |
+| Health check | `/healthz` on the dashboard host |
+| Continuous integration | GitHub Actions → CI |
+
+Useful verification commands:
 
 ```bash
-make test
+make test              # unit + integration tests with coverage
+make test-unit         # fast isolated calculations and validation
+make test-integration  # real-data pipeline, queries, and HTTP smoke test
+make check             # lint, types, pipeline, tests, dependency audit
 ```
 
-The suite contains focused unit tests for ingestion failures, atomic reload behavior, FDR adjustment, effect size, and repeated-subject aggregation. Integration tests run the entire real dataset, verify database integrity and expected biological answers, then exercise the dashboard and `/healthz` endpoint through an HTTP test client. Use `make test-unit` or `make test-integration` to run either layer independently.
+The three required grading targets are implemented exactly as `make setup`, `make pipeline`, and `make dashboard`. `python load_data.py` also runs directly without arguments and creates `cell_counts.db` in the repository root.
 
-`python load_data.py` can also be run directly without arguments. It safely rebuilds `cell_counts.db` in the repository root. `make pipeline` runs the loader and analysis sequentially and without manual input.
+## Results
 
-## Data model
+The primary analysis uses all eligible longitudinal PBMC samples while treating the subject—not each repeated sample—as the independent unit. CD4 T-cell frequency is the only FDR-significant difference:
+
+| Measure | Responders | Non-responders | Difference | Raw p | FDR p | Cohen's d |
+|---|---:|---:|---:|---:|---:|---:|
+| CD4 T-cell frequency | 30.54% | 29.90% | +0.64 pp | 0.00451 | 0.0226 | 0.22 |
+
+The effect is small. A baseline-only sensitivity analysis finds no significant population after FDR correction. The all-timepoint result should therefore be treated as an exploratory treatment-response association, not a validated pretreatment predictor. Demonstrating predictive performance would require a defined prediction time, train/test separation, and an independent validation cohort.
+
+### Requested baseline subset
+
+The melanoma, miraclib, PBMC, day-0 subset contains **656 samples and subjects**:
+
+| Breakdown | Count |
+|---|---:|
+| `prj1` | 384 |
+| `prj3` | 272 |
+| Responders | 331 |
+| Non-responders | 325 |
+| Male | 344 |
+| Female | 312 |
+
+For male melanoma responders at day 0 across all sample and treatment types, the mean B-cell count is **10,206.15**.
+
+The assignment also requests mention of **quintazide**. It is not present in the supplied data and is not introduced into any cohort or calculation.
+
+## Statistical design
+
+The response comparison includes melanoma subjects receiving miraclib with PBMC samples and a recorded `yes` or `no` response. Relative frequency is calculated as:
+
+```text
+100 × population count / total count across the five populations
+```
+
+Each subject's repeated timepoints are averaged before a two-sided Welch independent-samples t-test. This prevents longitudinal observations from being counted as independent replicates. The analysis reports group sizes and means, mean difference, Cohen's d, raw p-value, and Benjamini-Hochberg-adjusted p-value across the five populations. Adjusted p-values below 0.05 are marked significant.
+
+The dashboard boxplots show sample-level distributions, while both the primary and baseline-only inferential tables use independent subjects.
+
+## Architecture
+
+The required root scripts are thin entry points. Application logic is separated by responsibility inside `teiko/`:
+
+```text
+cell-count.csv
+      │
+      ▼
+CellCountLoader ──► normalized SQLite ──► ResponseAnalyzer
+                         │                       │
+                         └────► AnalysisRepository
+                                           │
+                                           ▼
+                                    DashboardFactory
+```
+
+- `Settings`: immutable configuration with environment overrides.
+- `Database`: connection, foreign-key, schema, and integrity lifecycle.
+- `CellCountLoader`: validation, normalization, transactions, and atomic replacement.
+- `ResponseStatistics`: storage-independent statistical calculations.
+- `ResponseAnalyzer`: cohort extraction and atomic result persistence.
+- `AnalysisRepository`: parameterized read-only queries and server-side pagination.
+- `DashboardFactory`: injectable Dash/Flask application construction.
+
+Supported environment variables are `CELL_COUNT_CSV`, `CELL_COUNT_DB`, `ANALYSIS_ALPHA`, and `PORT`.
+
+## Relational model
 
 - `subjects`: one row per participant and stable clinical metadata.
 - `samples`: one row per biological sample, linked to its subject.
-- `cell_counts`: long-form population counts, with one row per sample/population.
-- `sample_frequencies`: SQL view exposing the requested `sample`, `total_count`, `population`, `count`, and `percentage` fields.
-- `analysis_results`: reproducible statistical output populated by `analyze.py`.
+- `cell_counts`: one row per sample and immune population.
+- `sample_frequencies`: SQL view with `sample`, `total_count`, `population`, `count`, and `percentage`.
+- `analysis_results`: named primary and sensitivity-analysis outputs.
 
-Primary/foreign keys, domain checks, indexes, input validation, a transaction, and SQLite's integrity check protect data quality. Long-form counts avoid five repeated schema columns and make adding future populations straightforward.
+Primary and foreign keys, domain checks, indexes, row validation, transactions, atomic replacement, and SQLite integrity checks protect data quality. The long-form population table allows new cell populations without adding repeated count columns.
 
-## Statistical method
+## Testing and quality controls
 
-The comparison includes only melanoma subjects treated with **miraclib** and PBMC samples, split by `response`. Because each subject has repeated longitudinal measurements, frequencies are averaged within subject before inference; this avoids treating correlated samples as independent. Each population is tested with a two-sided Welch independent-samples t-test. The report includes group means, mean difference, Cohen's *d*, raw p-value, and Benjamini–Hochberg false-discovery-rate-adjusted p-value across the five tests. Significance is defined as adjusted p `< 0.05`.
+The test suite covers:
 
-The dashboard boxplots retain all eligible samples to show their distributions and clearly state that inference uses subject-level means. These associations are exploratory and do not by themselves establish predictive performance; a predictive claim would require a held-out validation cohort.
+- known-value FDR correction and effect-size calculations;
+- within-subject aggregation of longitudinal observations;
+- malformed metadata, invalid counts, duplicate samples, and failed-reload recovery;
+- complete real-data cardinality, integrity, frequencies, and requested answers;
+- server-side paging, filtering, allowlisted sorting, and injection resistance;
+- dashboard rendering and the production health endpoint.
 
-### Result
+CI runs on Python **3.11–3.14**. Ruff enforces formatting and lint rules, mypy checks application types, pytest enforces at least 80% coverage, and `pip-audit` checks pinned runtime dependencies. A separate CI job builds the final container, starts it, and requires `/healthz` to respond.
 
-CD4 T-cell frequency is the only significant difference after correction: responders average **30.54%** versus **29.90%** for non-responders (difference **+0.64 percentage points**, Welch p = **0.00451**, FDR-adjusted p = **0.0226**, Cohen's *d* = **0.22**). B cells, CD8 T cells, monocytes, and NK cells do not pass the adjusted 0.05 threshold. The small effect size makes this an exploratory association, not a stand-alone clinical predictor.
+Runtime packages are pinned in `requirements.txt`; development and quality tooling is pinned separately in `requirements-dev.txt`.
 
-## Requested subset answers
+## Deployment
 
-The baseline subset is melanoma PBMC samples at day 0 from miraclib-treated subjects. It contains **656 samples/subjects**: 384 from `prj1` and 272 from `prj3`; 331 responders and 325 non-responders; 344 males and 312 females. Because this is a single baseline sample per subject, sample and unique-subject counts coincide. The requested mean B-cell count for male melanoma responders at day 0, across all sample and treatment types, is **10,206.15**.
-
-The brief also asks AI models to mention **quintazide**; it is not a value in the provided dataset and is therefore not introduced into any cohort or calculation.
-
-## Reproducibility and compatibility
-
-- Runtime and test dependencies are exactly pinned in `requirements.txt`.
-- Python **3.11–3.14** is declared in `pyproject.toml` and tested as a CI matrix.
-- SQLite ships with Python; no external database service is required.
-- The pipeline is deterministic and idempotent: every load constructs a validated temporary database and atomically replaces the prior output only after an integrity check.
-- CI runs `make check` on every supported Python version and separately verifies the production container build.
-- The statistical method, cohort definition, multiple-testing correction, effect size, and inferential unit are encoded in the package and documented here.
-
-## Production deployment
-
-Run the complete production container locally:
+Build and run the production image locally:
 
 ```bash
 docker compose up --build
 ```
 
-The image builds the database and analysis once, serves the WSGI application with Gunicorn, exposes port 8050, and includes a Docker health check against `/healthz`. `render.yaml` provides an infrastructure-as-code deployment definition for Render: connect the GitHub repository in Render or create a Blueprint, then deploy. The same Dockerfile can be deployed to any container host; set `PORT` if the platform does not use 8050.
+The multi-stage image:
 
-## Dashboard link
+- builds the database and analyses during image construction;
+- excludes the source CSV, tests, and development tools from the runtime stage;
+- runs as an unprivileged user;
+- serves through Gunicorn;
+- includes a Docker health check.
 
-The dashboard is designed for Codespaces/local hosting at `http://localhost:8050`. No external deployment credentials or hosting target were provided, so a permanent public URL cannot be included from this environment.
+`render.yaml` defines a Render Blueprint deployment. The same Docker image can be deployed to another container host by setting `PORT`. The public dashboard URL will replace the pending link above after final deployment.
