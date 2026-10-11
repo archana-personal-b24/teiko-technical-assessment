@@ -16,8 +16,8 @@ Open forwarded port **8050** from the Codespaces **Ports** tab. No arguments, cr
 
 | Resource | Link |
 |---|---|
-| Interactive dashboard | Deployment pending final publication |
-| Health check | `/healthz` on the dashboard host |
+| Interactive dashboard | Port **8050** after running `make dashboard` |
+| Health check | `http://localhost:8050/healthz` |
 | Continuous integration | GitHub Actions → CI |
 
 Useful verification commands:
@@ -121,7 +121,7 @@ CI runs on Python **3.11–3.14**. Ruff enforces formatting and lint rules, mypy
 
 Runtime packages are pinned in `requirements.txt`; development and quality tooling is pinned separately in `requirements-dev.txt`.
 
-## Deployment
+## Optional container execution
 
 Build and run the production image locally:
 
@@ -137,4 +137,4 @@ The multi-stage image:
 - serves through Gunicorn;
 - includes a Docker health check.
 
-`render.yaml` defines a Render Blueprint deployment. The same Docker image can be deployed to another container host by setting `PORT`. The public dashboard URL will replace the pending link above after final deployment.
+The container is optional; evaluators can use the required Make targets directly in Codespaces. When `make dashboard` starts the server, Codespaces detects port 8050 and provides the dashboard link from its **Ports** tab. The Docker image remains available as evidence that the same application can run consistently outside Codespaces; another container host can use it by setting `PORT`.
