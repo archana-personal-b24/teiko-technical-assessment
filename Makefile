@@ -1,4 +1,4 @@
-.PHONY: setup pipeline dashboard test test-unit test-integration check
+.PHONY: setup pipeline dashboard test test-unit test-integration format lint typecheck audit check
 
 setup:
 	python -m pip install -r requirements-dev.txt

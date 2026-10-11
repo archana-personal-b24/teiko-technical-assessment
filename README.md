@@ -16,8 +16,8 @@ Open forwarded port **8050** from the Codespaces **Ports** tab. No arguments, cr
 
 | Resource | Link |
 |---|---|
-| Interactive dashboard | Port **8050** after running `make dashboard` |
-| Health check | `http://localhost:8050/healthz` |
+| Interactive dashboard | [Open on port 8050](http://localhost:8050) after running `make dashboard` |
+| Health check | [http://localhost:8050/healthz](http://localhost:8050/healthz) |
 | Continuous integration | GitHub Actions → CI |
 
 Useful verification commands:
